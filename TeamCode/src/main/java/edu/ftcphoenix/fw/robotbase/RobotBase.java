@@ -333,6 +333,10 @@ public abstract class RobotBase<C extends Enum<C>> {
         runningActions.add(action);
     }
 
+    public void sleep(long milliSeconds) {
+        ftcRobot.sleep(milliSeconds);
+    }
+
     /**
      * Execute {@link Action}s that are queued during {@link #onPeriodicTeleOp()}.
      *

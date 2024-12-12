@@ -1,5 +1,5 @@
 package org.firstinspires.ftc.teamcode.robots;
-package org.firstinspires.ftc.teamcode.teleops;
+
 import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
@@ -32,5 +32,6 @@ public class TestArmHRV extends LinearOpMode {
 
 
     public void runOpMode() {
-        if(slidemotorpos)
+//        if(slidemotorpos)
     }
+}
