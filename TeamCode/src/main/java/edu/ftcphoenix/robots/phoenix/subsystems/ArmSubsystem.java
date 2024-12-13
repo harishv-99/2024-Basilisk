@@ -40,6 +40,10 @@ public class ArmSubsystem {
         armExtender.setDirection(CRServo.Direction.FORWARD);
     }
 
+    public Telemetry getTelemetry() {
+        return telemetry;
+    }
+
     public int getArmRaiserPosition() {
         return armRaiserMotor.getCurrentPosition();
     }
@@ -47,7 +51,7 @@ public class ArmSubsystem {
     public void moveArmRaiser(int position) {
         armRaiserMotor.setTargetPosition(position);
         armRaiserMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        armRaiserMotor.setPower(0.8);
+        armRaiserMotor.setPower(0.5);
     }
 
 
@@ -81,8 +85,8 @@ public class ArmSubsystem {
 
     public void moveSlides(int position) {
         slideMotor.setTargetPosition(position);
-        armRaiserMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        armRaiserMotor.setPower(0.8);
+        slideMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        slideMotor.setPower(1);
     }
 
     public int getSlidesPosition() {
@@ -140,7 +144,7 @@ class MoveArmExtenderAction implements Action {
         if (!initialized) {
             armSubsystem.moveArmExtender(power);
             initialized = true;
-            elapsedTimeMillis.reset();
+            elapsedTimeMillis = new ElapsedTimeMillis();
         }
         boolean bFinishedAction = elapsedTimeMillis.getElapsedMilliseconds() >= milliSeconds;
         if (bFinishedAction) {
@@ -181,6 +185,7 @@ class MoveRollerIntakeAction implements Action {
 class MoveSlidesAction implements Action {
 
     private final int targetPosition;
+    private int startPosition;
     private final ArmSubsystem armSubsystem;
     private boolean initialized = false;
 
@@ -192,10 +197,22 @@ class MoveSlidesAction implements Action {
     @Override
     public boolean run(@NonNull TelemetryPacket packet) {
         if (!initialized) {
+            startPosition = armSubsystem.getSlidesPosition();
             armSubsystem.moveSlides(targetPosition);
             initialized = true;
         }
-        return Math.abs(targetPosition - armSubsystem.getArmRaiserPosition()) >= MOTOR_ERROR_THRESHOLD;
+        armSubsystem.getTelemetry().addLine("pos: " + armSubsystem.getSlidesPosition());
+        armSubsystem.getTelemetry().update();
+        if (startPosition < targetPosition) {
+            armSubsystem.getTelemetry().addLine("S < T: " + (armSubsystem.getSlidesPosition() <= (targetPosition - MOTOR_ERROR_THRESHOLD)));
+            armSubsystem.getTelemetry().update();
+            return armSubsystem.getSlidesPosition() <= (targetPosition - MOTOR_ERROR_THRESHOLD);
+        }
+        else {
+            armSubsystem.getTelemetry().addLine("S >= T: " + (armSubsystem.getSlidesPosition() >= (targetPosition + MOTOR_ERROR_THRESHOLD)));
+            armSubsystem.getTelemetry().update();
+            return armSubsystem.getSlidesPosition() >= (targetPosition + MOTOR_ERROR_THRESHOLD);
+        }
     }
 
 }

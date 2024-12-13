@@ -1,7 +1,10 @@
 package org.firstinspires.ftc.teamcode.robots;
 
 import com.acmerobotics.roadrunner.ParallelAction;
+import com.acmerobotics.roadrunner.Rotation2d;
+import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import com.acmerobotics.dashboard.config.Config;
@@ -9,7 +12,7 @@ import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.hardware.CRServo;
+
 
 import org.firstinspires.ftc.teamcode.MecanumDrive;
 
@@ -22,50 +25,53 @@ import edu.ftcphoenix.robots.phoenix.subsystems.ArmSubsystem;
 public class TestRoadrunnerHansika extends LinearOpMode {
 
     ArmSubsystem arm;
+    int nPosStart = 1;
+    int nPosPark = 1;
     @Override
     public void runOpMode() {
-//        CRServo armExtender2;
-//        armExtender2 = hardwareMap.get(CRServo.class, "armExtender");
-//        armExtender2.setDirection(CRServo.Direction.REVERSE);
-//        armExtender2.setPower(1);
-//        try {
-//            Thread.sleep(1000);
-//        } catch (InterruptedException e) {
-//            throw new RuntimeException(e);
-//        }
-//        armExtender2.setPower(0);
-
         arm = new ArmSubsystem(hardwareMap, telemetry);
-        arm.moveArmRaiser(500);
-        arm.moveRollerIntake(1, 3000);
-//        arm.moveArmExtender(-0.2, 1000);
-        Pose2d initialPose = new Pose2d(0, 0, Math.toRadians(0));
+        Pose2d initialPose;
+        if(nPosStart == 0) {
+            initialPose = new Pose2d(32, 6, Math.toRadians(180));
+        }
+        else {
+            initialPose = new Pose2d(86, 6, Math.toRadians(90));
+        }
         MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
 
-        TrajectoryActionBuilder tab1 = drive.actionBuilder(initialPose)
-                // score pre loaded sample
-                .lineToX(-33)
-                .turn(Math.toRadians(70));
-//                .turn(Math.toRadians(70))
-//                .lineToX(-36)
-//                .waitSeconds(2)
-//                .turn(Math.toRadians(165))
-//                //.lineToY(3);
-//                .strafeTo(new Vector2d(-50, 30));     // go to one sample
-                // .turn(Math.toRadians(100));
-                //.strafeTo(new Vector2d(-40, 5))    // go back to baskets
-                //.splineTo(new Vector2d(-38, 40), (6 * Math.PI) / 5);
-                // repeat for other 2 samples
+        TrajectoryActionBuilder tabStartToBasket;
+        if (nPosStart == 0) {
+            tabStartToBasket = drive.actionBuilder(initialPose)
+                    .strafeToSplineHeading(new Vector2d(5, 17), Math.toRadians(180+45));
+        }
+        else {
+            // TODO
+            tabStartToBasket = drive.actionBuilder(initialPose)
+                    .strafeToSplineHeading(new Vector2d(7, 19), Math.toRadians(180+45));
+        }
 
+        TrajectoryActionBuilder tabAwayFromBasket = tabStartToBasket.endTrajectory().fresh()
+                .strafeTo(new Vector2d(23, 23));
 
-
-
-                // score 3 samples on left
-                //.splineTo(new Vector2d(40, -50), (6 * Math.PI) / 5);
-
-        Action trajectoryActionCloseOut = tab1.endTrajectory().fresh()
-                //.strafeTo(new Vector2d(48, 12))
-                .build();
+        TrajectoryActionBuilder tabAwayToParkPrepare;
+        if(nPosStart == 0) {
+            if(nPosPark == 0) {
+                tabAwayToParkPrepare = tabAwayFromBasket.endTrajectory().fresh()
+                        .strafeToSplineHeading(new Vector2d(125, 33), Math.toRadians(90))
+                        .strafeToSplineHeading(new Vector2d(125, 23), Math.toRadians(90));
+            }
+            // PARK TO RIGHT
+            else {
+                tabAwayToParkPrepare = tabAwayFromBasket.endTrajectory().fresh()
+                        .strafeToSplineHeading(new Vector2d(148, 33), Math.toRadians(90))
+                        .strafeToSplineHeading(new Vector2d(148, 23), Math.toRadians(90));
+            }
+        }
+        else {
+            tabAwayToParkPrepare = drive.actionBuilder(initialPose)
+                    .strafeToSplineHeading(new Vector2d(148, 11), Math.toRadians(90));
+                    //.strafeToSplineHeading(new Vector2d(148, 23), Math.toRadians(90));
+        }
 
 
         while (!isStopRequested() && !opModeIsActive()) {
@@ -77,16 +83,31 @@ public class TestRoadrunnerHansika extends LinearOpMode {
 
         if (isStopRequested()) return;
 
-        Action trajectoryActionChosen;
-        trajectoryActionChosen = tab1.build();
-
-        Action act = new ParallelAction(
-//            trajectoryActionChosen,
-//            arm.getArmExtenderAction(-1, 500)
-            arm.getMoveRollerIntakeAction(1, 500)
-//            arm.getMoveSlidesAction(500),
-//            arm.getMoveArmRaiserAction(700)
+        Action actRaiseArmToBucketHigh = new ParallelAction(
+                arm.getArmExtenderAction(1, 1_800),
+                arm.getMoveSlidesAction(20_000),
+                arm.getMoveArmRaiserAction(1_100)
         );
+
+        Action actReleaseSample = arm.getMoveRollerIntakeAction(-1, 2000);
+        Action actLowerSlides = arm.getMoveSlidesAction(0);
+
+        Action act;
+        if(nPosStart == 0) {
+            act = new SequentialAction(
+                    actRaiseArmToBucketHigh,
+                    tabStartToBasket.build(),
+                    actReleaseSample,
+                    tabAwayFromBasket.build(),
+                    actLowerSlides,
+                    tabAwayToParkPrepare.build()
+            );
+        }
+        else {
+            act = tabAwayToParkPrepare.build();
+        }
+
+//        Action act = tabStartToBasket.build();
 
         Actions.runBlocking(act);
     }
