@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.JavaUtil;
 
-@TeleOp(name = "gamedaycodeoverridethingyclawversion2 (Blocks to Java)")
+@TeleOp(name = "GameDayCode")
 public class GameDayCode extends LinearOpMode {
 
     private DcMotor slideMotor;
